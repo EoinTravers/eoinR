@@ -3,11 +3,11 @@
 #' @param mod The lme4 model to describe.
 #'
 #' @return None
-verbalise_lmm = function(mod, digits = 2){
+verbalise_lmm = function(mod, digits = 2, subject_id='subject_nr'){
   s = summary(mod)
   co = coef(s) %>% round(digits)
   ci = confint(mod, method='Wald', parm='beta_') %>% round(digits)
-  vc = s$varcor$subject_nr
+  vc = s$varcor[[subject_id]]
   subj.sd = attr(vc, 'stddev') %>% round(digits)
   template_lmm = 'Parameter: %s. B = %.#f CI = [%.#f, %.#f], t(%.1f) = %.3f, p = %.3f, '
   template_lmm = str_replace_all(template_lmm, '#', paste0(digits))
@@ -22,7 +22,7 @@ verbalise_lmm = function(mod, digits = 2){
                     ci[v,1], ci[v, 2],
                     co[v,'df'], co[v,'t value'], co[v,'Pr(>|t|)'])
     } else {
-      txt = sprintf(template_lmm,
+      txt = sprintf(template_glmm,
                     v, co[v,'Estimate'],
                     ci[v,1], ci[v, 2],
                     co[v,'z value'], co[v,'Pr(>|z|)'])
@@ -36,6 +36,7 @@ verbalise_lmm = function(mod, digits = 2){
       result = paste0(result, '\n', txt)
     }
   }
+  cat(result)
 }
 
 
