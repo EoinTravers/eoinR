@@ -1,12 +1,18 @@
 # Basic transformations
 # TODO: Add documentation
 
-logit = function(x) 1 / (1 + exp(-1 * x))
+logit = function(p) log(p / (1-p))
 invlogit = function(x) exp(x)/(1+exp(x))
 reciprocal = function(x) 1/x
 prob.to.odds = function (x) x / (1-x)
 odds.to.prob = function(x) x / (1+x)
 odds.to.risk = function(odds, control.p) {odds / (1 - control.p + (control.p * odds))}
+
+num.cut = function(x, bins){
+  cuts = cut(x, bins)
+  cuts %>% str_replace_all('[\\(\\[\\)\\]]', '') %>%
+      str_split(',') %>% map(as.numeric) %>% map_dbl(mean)
+}
 
 edge = function(x, size=.001) {
   xsign = sign(.5-x)
