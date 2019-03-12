@@ -31,6 +31,19 @@ mean.sd = function(x, digits=2){
   paste(x.mean, ' (', x.sd, ')', sep='') %>% return()
 }
 
+mean_quantile = function(x, alpha){
+  x <- stats::na.omit(x)
+  mean <- mean(x)
+  iq = .5 * (1 - alpha)
+  q = c(iq, 1-iq)
+  quant = quantile(x, q)
+  data.frame(y = mean, ymin = quant[1], ymax = quant[2])
+}
+
+mean_95 = purrr::partial(mean_quantile, alpha=.95)
+mean_68 = purrr::partial(mean_quantile, alpha=.68)
+
+
 soft_apply = function(df, fun) {
   nums = sapply(df, is.numeric)
   df[,nums] %>% fun
