@@ -43,6 +43,8 @@ mean_quantile = function(x, alpha){
 mean_95 = purrr::partial(mean_quantile, alpha=.95)
 mean_68 = purrr::partial(mean_quantile, alpha=.68)
 
+q2.5 = function(x) quantile(x, .025)
+q97.5 = function(x) quantile(x, .975)
 
 soft_apply = function(df, fun) {
   nums = sapply(df, is.numeric)

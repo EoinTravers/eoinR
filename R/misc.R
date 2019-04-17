@@ -143,3 +143,11 @@ flat.cor.p = function(d) {
   }
   data.frame(out)
 }
+
+value.counts = function(x){
+    tbl = data.frame(table(x))
+    tbl = rbind(tbl,
+                data.frame(x='NA', Freq=sum(is.na(x))))
+    names(tbl) = c('value', 'count')
+    return(tbl)
+}
