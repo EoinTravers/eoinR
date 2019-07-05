@@ -151,3 +151,71 @@ value.counts = function(x){
     names(tbl) = c('value', 'count')
     return(tbl)
 }
+
+
+
+#' Fits the psychometric function for response y against variable x,
+#' for each cell of the data.
+#' 
+#' TODO:
+#' - MOVE ME TO DIFFERENT FILE
+#' - Accept formula input
+#' - Generalise to other classes of model.
+#' 
+#'
+#' @param df: The data
+#' @param x: The independant variable.
+#' @param y: The binary (for now) resposne variable
+#' @param ...: Arguments passed to tidyr::nest to divide the data into cells/
+#'
+#' @return res: Nested dataframe with columns containing the models (m), coefficients (co), and predictions (pred).
+#' 
+#' Example:
+#' resp.models = fit.models.per.cell(data, stimulus, response, -subject.nr, -condition)
+#' resp.model.coef = resp.models %>% unnest(coef)
+#' resp.models.pred = resp.models %>% unnest(pred)
+#' resp.models.m = resp.models %>% unnest(m)
+fit.psych.fun.per.cell = function(df, x, y, ...) {
+  nest.vars <- enquos(...)
+  x = rlang::enquo(x)
+  y = rlang::enquo(y)
+  xvals = df[rlang::quo_text(x)]
+  x.range = seq(min(xvals), max(xvals), length.out = 50)
+  x <- rlang::quo_expr(x, warn = TRUE)
+  y <- rlang::quo_expr(y, warn = TRUE)
+  my.formula = rlang::new_formula(y, x)
+  model.func = function(d){ glm(my.formula, data=d, family=binomial('probit')) }
+  res = df %>% 
+    nest(...) %>%
+    mutate(
+      m = map(data, model.func),
+      co = map(m, broom::tidy),
+      pred = map(m, function(model){
+        df.new = data.frame(i=1:50)
+        df.new[rlang::quo_text(x)] = x.range
+        p = predict(model, newdata=df.new, type='link', se.fit=T)
+        df.new$pred = pnorm(p$fit)
+        df.new$lo = pnorm(p$fit - p$se.fit)
+        df.new$hi = pnorm(p$fit + p$se.fit)
+        df.new
+      })
+    )
+  return(res)
+}
+
+#' Example:
+#' f = function(df) lm(confidence ~ rt, data=df)
+#' resp.models = fit.models.per.cell(data, f, -subject.nr)
+#' resp.models %>% unnest(co)
+fit.models.per.cell = function(df, model.func, ...) {
+  res = df %>% 
+    nest(...) %>%
+    mutate(
+      m = map(data, model.func),
+      model.formula = map(m, ~{. %>% formula() %>% deparse() }),
+      co = map(m, broom::tidy),
+      aov = map(m, function(mod){
+        car::Anova(mod) %>% broom::tidy()
+      }))
+  return(res)
+}
