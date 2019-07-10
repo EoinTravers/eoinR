@@ -4,18 +4,21 @@
 #'
 #' @return None
 verbalise_lmm = function(mod, digits = 2, subject_id='subject_nr'){
+  stopifnot('merModLmerTest' %in% class(mod)) # Make sure model fit with lmerTest
   s = summary(mod)
-  co = coef(s) %>% round(digits)
+  co = s %>% coef %>% round(digits)
   ci = confint(mod, method='Wald', parm='beta_') %>% round(digits)
   vc = s$varcor[[subject_id]]
   subj.sd = attr(vc, 'stddev') %>% round(digits)
+  a = car::Anova(mod)
   template_lmm = 'Parameter: %s. B = %.#f CI = [%.#f, %.#f], t(%.1f) = %.3f, p = %.3f, '
   template_lmm = str_replace_all(template_lmm, '#', paste0(digits))
   template_glmm = 'Parameter: %s. B = %.#f CI = [%.#f, %.#f], z = %.3f, p = %.3f, '
   template_glmm = str_replace_all(template_glmm, '#', paste0(digits))
+  template_aov = 'χ^2(%i) = %.2f, p = %.3f, '
   result = ''
   for(v in rownames(co)){
-    if('df' %in% names(co)){
+    if('t value' %in% colnames(co)){
       # Linear model
       txt = sprintf(template_lmm,
                     v, co[v,'Estimate'],
@@ -26,6 +29,9 @@ verbalise_lmm = function(mod, digits = 2, subject_id='subject_nr'){
                     v, co[v,'Estimate'],
                     ci[v,1], ci[v, 2],
                     co[v,'z value'], co[v,'Pr(>|z|)'])
+    }
+    if(v %in% rownames(a)){
+      txt = paste0(txt, sprintf(template_aov, a[v, 'Df'], a[v,'Chisq'], a[v,'Pr(>Chisq)']))
     }
     if(v %in% names(subj.sd)){
       txt = paste0(txt, ' SD across subjects = ', round(subj.sd[v], digits))
@@ -38,7 +44,6 @@ verbalise_lmm = function(mod, digits = 2, subject_id='subject_nr'){
   }
   cat(result)
 }
-
 
 verbalise_t_test = function(test) {
   template = 'DV: %s, t(%.2f) = %.3f, p = %.3f'

@@ -56,3 +56,10 @@ debracket = function(x) {
   gsub('\\(', '', x) %>% gsub('\\)', '', .)
 }
 
+get.ci = function(model, level=.95){
+  ci = confint(model, level=level, method='Wald') %>% 
+    data.frame() %>% rownames_to_column('term')
+  names(ci) = c('term', 'lower', 'upper')
+  b = fixef(model) %>% data.frame() %>% rownames_to_column('term') %>% rename(b='.')
+  inner_join(b, ci, by='term') %>% return()
+}

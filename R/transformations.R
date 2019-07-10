@@ -46,6 +46,16 @@ mean_68 = purrr::partial(mean_quantile, alpha=.68)
 q2.5 = function(x) quantile(x, .025)
 q97.5 = function(x) quantile(x, .975)
 
+
+#' Transform posterior samples (e.g. from arm::sim) to p values using Normal approximation.
+p.value.from.samples = function(samps){
+  b = mean(samps)
+  se = sd(samps)
+  z = c(b / se)[[1]]
+  p = 2 * pnorm(-abs(z))
+  p
+}
+
 soft_apply = function(df, fun) {
   nums = sapply(df, is.numeric)
   df[,nums] %>% fun

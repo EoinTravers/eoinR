@@ -151,3 +151,73 @@ value.counts = function(x){
     names(tbl) = c('value', 'count')
     return(tbl)
 }
+
+
+
+fit.psych.fun.per.cell = function(df, x, y, ..., xr=.95, penalised=F) {
+  nest.vars <- enquos(...)
+  x = rlang::enquo(x)
+  y = rlang::enquo(y)
+  xvals = df[[rlang::quo_text(x)]]
+  lxr = .5 * (1-xr)
+  hxr = xr  + .5 * (1-xr)
+  x.range = seq(quantile(xvals, lxr), quantile(xvals, hxr), length.out = 50)
+  x <- rlang::quo_expr(x, warn = TRUE)
+  y <- rlang::quo_expr(y, warn = TRUE)
+  my.formula = rlang::new_formula(y, x)
+  if(penalised){
+    model.func = function(d){ arm::bayesglm(my.formula, data=d, family=binomial('probit')) }
+  } else {
+    model.func = function(d){ glm(my.formula, data=d, family=binomial('probit')) }
+  }
+  res = df %>%
+    nest(...) %>%
+    mutate(
+      m = map(data, model.func),
+      co = map(m, broom::tidy),
+      pred = map(m, function(model){
+        df.new = data.frame(i=1:50)
+        df.new[rlang::quo_text(x)] = x.range
+        p = predict(model, newdata=df.new, type='link', se.fit=T)
+        df.new$pred = pnorm(p$fit)
+        df.new$lo = pnorm(p$fit - p$se.fit)
+        df.new$hi = pnorm(p$fit + p$se.fit)
+        df.new
+      })
+    )
+  return(res)
+}
+
+tidy.anova = function(model){ 
+  model %>% Anova() %>% data.frame() %>% rownames_to_column('term') %>% return()
+}
+fit.nested.models = function(df, model.func, ...) {
+  nest.vars <- rlang::enquos(...)
+  nested = nest(df, ...) 
+  res = mutate(nested, 
+               m = map(data, model.func),
+               co = map(m, broom::tidy),
+               aov = map(m, tidy.anova))
+  return(res)
+}
+
+get.factor.order = function(x, main.fx.order=NA, rev=F){
+    n = length(x)
+    is.intercept = x %>% str_to_lower() %>% str_detect('intercept')
+    exes = x %>% str_replace_all('×', 'x') %>% str_count(' x ')
+    points = -1 * is.intercept + 10 * exes + (1:n) * .5/n
+    if(!is.na(main.fx.order)) {
+        for(v in 1:length(main.fx.order)){
+            k = main.fx.order[[v]]
+            found = str_detect(x, k)
+            points = points + found
+        }
+    }
+    ix = sort(points, index.return=T, decreasing=rev)$ix
+    return(ix)
+}
+factor_order = function(fct, rev=F){
+    x = fct %>% unique()
+    fct = factor(fct, levels=x[get.factor.order(x, rev=rev)])
+    return(fct)
+}
