@@ -154,6 +154,7 @@ value.counts = function(x){
 
 
 
+
 fit.psych.fun.per.cell = function(df, x, y, ..., xr=.95, penalised=F) {
   nest.vars <- enquos(...)
   x = rlang::enquo(x)
@@ -171,6 +172,39 @@ fit.psych.fun.per.cell = function(df, x, y, ..., xr=.95, penalised=F) {
     model.func = function(d){ glm(my.formula, data=d, family=binomial('probit')) }
   }
   res = df %>%
+
+#' Fits the psychometric function for response y against variable x,
+#' for each cell of the data.
+#' 
+#' TODO:
+#' - MOVE ME TO DIFFERENT FILE
+#' - Accept formula input
+#' - Generalise to other classes of model.
+#' 
+#'
+#' @param df: The data
+#' @param x: The independant variable.
+#' @param y: The binary (for now) resposne variable
+#' @param ...: Arguments passed to tidyr::nest to divide the data into cells/
+#'
+#' @return res: Nested dataframe with columns containing the models (m), coefficients (co), and predictions (pred).
+#' 
+#' Example:
+#' resp.models = fit.models.per.cell(data, stimulus, response, -subject.nr, -condition)
+#' resp.model.coef = resp.models %>% unnest(coef)
+#' resp.models.pred = resp.models %>% unnest(pred)
+#' resp.models.m = resp.models %>% unnest(m)
+fit.psych.fun.per.cell = function(df, x, y, ...) {
+  nest.vars <- enquos(...)
+  x = rlang::enquo(x)
+  y = rlang::enquo(y)
+  xvals = df[rlang::quo_text(x)]
+  x.range = seq(min(xvals), max(xvals), length.out = 50)
+  x <- rlang::quo_expr(x, warn = TRUE)
+  y <- rlang::quo_expr(y, warn = TRUE)
+  my.formula = rlang::new_formula(y, x)
+  model.func = function(d){ glm(my.formula, data=d, family=binomial('probit')) }
+  res = df %>% 
     nest(...) %>%
     mutate(
       m = map(data, model.func),
@@ -188,36 +222,19 @@ fit.psych.fun.per.cell = function(df, x, y, ..., xr=.95, penalised=F) {
   return(res)
 }
 
-tidy.anova = function(model){ 
-  model %>% Anova() %>% data.frame() %>% rownames_to_column('term') %>% return()
-}
-fit.nested.models = function(df, model.func, ...) {
-  nest.vars <- rlang::enquos(...)
-  nested = nest(df, ...) 
-  res = mutate(nested, 
-               m = map(data, model.func),
-               co = map(m, broom::tidy),
-               aov = map(m, tidy.anova))
+#' Example:
+#' f = function(df) lm(confidence ~ rt, data=df)
+#' resp.models = fit.models.per.cell(data, f, -subject.nr)
+#' resp.models %>% unnest(co)
+fit.models.per.cell = function(df, model.func, ...) {
+  res = df %>% 
+    nest(...) %>%
+    mutate(
+      m = map(data, model.func),
+      model.formula = map(m, ~{. %>% formula() %>% deparse() }),
+      co = map(m, broom::tidy),
+      aov = map(m, function(mod){
+        car::Anova(mod) %>% broom::tidy()
+      }))
   return(res)
-}
-
-get.factor.order = function(x, main.fx.order=NA, rev=F){
-    n = length(x)
-    is.intercept = x %>% str_to_lower() %>% str_detect('intercept')
-    exes = x %>% str_replace_all('×', 'x') %>% str_count(' x ')
-    points = -1 * is.intercept + 10 * exes + (1:n) * .5/n
-    if(!is.na(main.fx.order)) {
-        for(v in 1:length(main.fx.order)){
-            k = main.fx.order[[v]]
-            found = str_detect(x, k)
-            points = points + found
-        }
-    }
-    ix = sort(points, index.return=T, decreasing=rev)$ix
-    return(ix)
-}
-factor_order = function(fct, rev=F){
-    x = fct %>% unique()
-    fct = factor(fct, levels=x[get.factor.order(x, rev=rev)])
-    return(fct)
 }
