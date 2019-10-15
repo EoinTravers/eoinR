@@ -145,42 +145,42 @@ flat.cor.p = function(d) {
 }
 
 value.counts = function(x){
-    tbl = data.frame(table(x))
-    tbl = rbind(tbl,
-                data.frame(x='NA', Freq=sum(is.na(x))))
-    names(tbl) = c('value', 'count')
-    return(tbl)
+  tbl = data.frame(table(x))
+  tbl = rbind(tbl,
+              data.frame(x='NA', Freq=sum(is.na(x))))
+  names(tbl) = c('value', 'count')
+  return(tbl)
 }
 
 
 
 
-fit.psych.fun.per.cell = function(df, x, y, ..., xr=.95, penalised=F) {
-  nest.vars <- enquos(...)
-  x = rlang::enquo(x)
-  y = rlang::enquo(y)
-  xvals = df[[rlang::quo_text(x)]]
-  lxr = .5 * (1-xr)
-  hxr = xr  + .5 * (1-xr)
-  x.range = seq(quantile(xvals, lxr), quantile(xvals, hxr), length.out = 50)
-  x <- rlang::quo_expr(x, warn = TRUE)
-  y <- rlang::quo_expr(y, warn = TRUE)
-  my.formula = rlang::new_formula(y, x)
-  if(penalised){
-    model.func = function(d){ arm::bayesglm(my.formula, data=d, family=binomial('probit')) }
-  } else {
-    model.func = function(d){ glm(my.formula, data=d, family=binomial('probit')) }
-  }
-  res = df %>%
+# fit.psych.fun.per.cell = function(df, x, y, ..., xr=.95, penalised=F) {
+#   nest.vars <- enquos(...)
+#   x = rlang::enquo(x)
+#   y = rlang::enquo(y)
+#   xvals = df[[rlang::quo_text(x)]]
+#   lxr = .5 * (1-xr)
+#   hxr = xr  + .5 * (1-xr)
+#   x.range = seq(quantile(xvals, lxr), quantile(xvals, hxr), length.out = 50)
+#   x <- rlang::quo_expr(x, warn = TRUE)
+#   y <- rlang::quo_expr(y, warn = TRUE)
+#   my.formula = rlang::new_formula(y, x)
+#   if(penalised){
+#     model.func = function(d){ arm::bayesglm(my.formula, data=d, family=binomial('probit')) }
+#   } else {
+#     model.func = function(d){ glm(my.formula, data=d, family=binomial('probit')) }
+#   }
+#   res = df %>%
 
 #' Fits the psychometric function for response y against variable x,
 #' for each cell of the data.
-#' 
+#'
 #' TODO:
 #' - MOVE ME TO DIFFERENT FILE
 #' - Accept formula input
 #' - Generalise to other classes of model.
-#' 
+#'
 #'
 #' @param df: The data
 #' @param x: The independant variable.
@@ -188,7 +188,7 @@ fit.psych.fun.per.cell = function(df, x, y, ..., xr=.95, penalised=F) {
 #' @param ...: Arguments passed to tidyr::nest to divide the data into cells/
 #'
 #' @return res: Nested dataframe with columns containing the models (m), coefficients (co), and predictions (pred).
-#' 
+#'
 #' Example:
 #' resp.models = fit.models.per.cell(data, stimulus, response, -subject.nr, -condition)
 #' resp.model.coef = resp.models %>% unnest(coef)
@@ -204,7 +204,7 @@ fit.psych.fun.per.cell = function(df, x, y, ...) {
   y <- rlang::quo_expr(y, warn = TRUE)
   my.formula = rlang::new_formula(y, x)
   model.func = function(d){ glm(my.formula, data=d, family=binomial('probit')) }
-  res = df %>% 
+  res = df %>%
     nest(...) %>%
     mutate(
       m = map(data, model.func),
@@ -227,7 +227,7 @@ fit.psych.fun.per.cell = function(df, x, y, ...) {
 #' resp.models = fit.models.per.cell(data, f, -subject.nr)
 #' resp.models %>% unnest(co)
 fit.models.per.cell = function(df, model.func, ...) {
-  res = df %>% 
+  res = df %>%
     nest(...) %>%
     mutate(
       m = map(data, model.func),
@@ -238,3 +238,12 @@ fit.models.per.cell = function(df, model.func, ...) {
       }))
   return(res)
 }
+
+eponymous.list = function(...){
+  args = rlang::enquos(...)
+  lbls = purrr::map_chr(args, rlang::as_name)
+  vals = list(...)
+  names(vals) = lbls
+  return(vals)
+}
+

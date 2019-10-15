@@ -4,7 +4,9 @@
 #'
 #' @return None
 verbalise_lmm = function(mod, digits = 2, subject_id='subject_nr'){
-  stopifnot('merModLmerTest' %in% class(mod)) # Make sure model fit with lmerTest
+  cls = class(mod)
+  has_p_vals = ('merModLmerTest' %in% cls) | ('glmerMod' %in% cls)
+  stopifnot(has_p_vals) # Make sure model fit with lmerTest, or is a GLM
   s = summary(mod)
   co = s %>% coef %>% round(digits)
   ci = confint(mod, method='Wald', parm='beta_') %>% round(digits)
@@ -132,7 +134,8 @@ short.t.test = function(t) {
   paste('t(', t$parameter,
         ') = ', round(t$statistic, 3),
         ', p = ', round(t$p.value, 4),
-        sep='')}
+        sep='')
+}
 
 apa.anova = function(a, terms=NULL){
   tidied = tidy(a)
@@ -160,4 +163,5 @@ tidy.cor = function(x,y) {
     select(r=estimate, p=p.value) %>%
     mutate(r=round(r, 3), p=round(p, 4))
 }
+
 
