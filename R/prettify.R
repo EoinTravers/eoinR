@@ -1,7 +1,7 @@
 pretty.lme.table = function (model, row.names=NULL, pandoc=TRUE) {
   model.summary = summary(model)
   model.coef = coef(model.summary)
-  model.ci = confint(model, method="Wald")
+  model.ci = confint(model, method="Wald", parm=names(fixef(model)))
   model.coef = cbind(model.coef, model.ci)
   if (!is.null(row.names)){ row.names(model.coef) = row.names}
   out = round(model.coef, 3)
@@ -57,7 +57,7 @@ debracket = function(x) {
 }
 
 get.ci = function(model, level=.95){
-  ci = confint(model, level=level, method='Wald') %>% 
+  ci = confint(model, level=level, method='Wald') %>%
     data.frame() %>% rownames_to_column('term')
   names(ci) = c('term', 'lower', 'upper')
   b = fixef(model) %>% data.frame() %>% rownames_to_column('term') %>% rename(b='.')

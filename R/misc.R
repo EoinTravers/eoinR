@@ -1,3 +1,29 @@
+#' Drop columns that are perfectly correlated with previous ones.
+#'
+#' @param data A data.frame
+#' @param tol How strong is a perfect correlation? Default = .999
+#' @param include_neg Remove perfect negative correlations. Default = FALSE
+#'
+#' @return data.frame with redundant columns removed
+drop_redundant_columns = function(data, tol=.999, include_neg=FALSE){
+    cols = colnames(data)
+    c1 = cols[[1]]
+    df = data.frame(data[c1])
+    colnames(df) = c(c1)
+    for(v in cols){
+        tmp_df = data.frame(df, data[v])
+        R = cor(tmp_df, use='complete')
+        collinear = ifelse(include_neg,
+                           R[,nrow(R)] > tol | -R[,nrow(R)] < -tol,
+                           R[,nrow(R)] > tol)
+        redundant = sum( collinear ) > 1
+        if(!is.na(redundant) & redundant == F){
+            df[v] = data[v]
+        }
+    }
+    return(df)
+}
+
 #' Within reason, this function finds the denominator d
 #' to represent a decimal value f as a fraction 1/d.
 #'

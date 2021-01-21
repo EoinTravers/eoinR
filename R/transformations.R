@@ -23,6 +23,10 @@ z = function(x){scale(x)}
 center  = function(x){scale(x, scale=F)}
 as.caps = function(x) sapply(x, Hmisc::capitalize)
 
+sem = function(x, na.rm=F){
+  sd(x, na.rm=na.rm) / sqrt(length(x))
+}
+
 mean.sd = function(x, digits=2){
   # Returns string with "Mean (Standard deviation)" of intput.
   # Nice for APA tables!
@@ -74,4 +78,101 @@ relative.risk = function(ci){
     odds.to.risk(exp(ci[2,3]), control.p))
   names(out) = c('estimate', 'lower', 'upper')
   out
+}
+
+## Newer stuff
+chr_to_ordinal = function(vals){
+  # Cooerce strings to ordinal numers
+  as.numeric(as.factor(vals))
+}
+
+z_transform = function(x){
+  cx = (x - mean(x, na.rm = T))
+  std = sd(cx, na.rm = T)
+  if(std > 0){
+    cx = cx / std
+  }
+  return(cx)
+}
+
+bound_transform = function(x, lower=-1, upper=1){
+  .low = min(x, na.rm=T)
+  .high = max(x, na.rm=T)
+  unit_scaled = (x - .low) / (.high-.low)
+  (unit_scaled * (upper-lower))  + lower
+}
+
+sem = function(x){
+  sd(x) / sqrt(length(x))
+}
+
+
+
+
+center  = function(x) x - mean(x, na.rm = T)
+z = function(x){
+  cx = center(x)
+  cx / sd(cx, na.rm = T)
+}
+
+#' Replace values if a substitute is defined
+#'
+#' @param x Vector of strings
+#' @param sub_list A named list of substitutes
+#' @return A modified vector
+#'
+#' @examples
+#' x = c('ugly', 'something else')
+#' sub_list = list('ugly'='Pretty', 'Nasty'='Nice')
+#' replace_if_found(x, sub_list)
+#' @export
+replace_if_found = function(x, sub_list){
+  .can.replace = x %in% names(sub_list)
+  x[.can.replace] = purrr::map_chr(x[.can.replace], ~sub_list[[.]])
+  x
+}
+
+#' Round numeric columns
+#'
+#' @param df Input data.frame
+#' @param digits Digits to round to
+#' @return Rounded data.frame
+#' @export
+round_df <- function(df, digits) {
+  dplyr::mutate_if(df, is.numeric, round, digits=digits)
+}
+
+
+#' Gathers a matrix into a long data frame
+#' @export
+gather_matrix = function(mat) {
+  mat %>%
+    data.frame() %>%
+    tibble::rownames_to_column('var1') %>%
+    gather(var2, value, -var1)
+}
+
+#' Gather data into very long data.frame of pairwise comparisons
+#'
+#' @description
+#' Gather data into very long data.frame of pairwise comparisons,
+#' with columns c(xvar, yvar, x, y).
+#' If input has n rows, m columns, output has n * (m^2 - m) rows (and 4 columns).
+#'
+#' @param df Data frame to gather
+#' @return Data frame with one row per pairwise comparison
+#'
+#' @export
+gather_pairwise = function(df){
+  order = names(df)
+  f = function(df, .xvar){
+    df %>% gather(yvar, y, -.xvar) %>%
+      rename(x=.xvar) %>% mutate(xvar=.xvar) %>%
+      select(xvar, yvar, x, y) %>%
+      return()
+  }
+  res = names(df) %>% map_df(f, df=df) %>%
+    mutate(xvar = factor(xvar, levels = order),
+           yvar = factor(yvar, levels = order))
+  res
 }
